@@ -53,54 +53,9 @@ body {
   position:fixed; top:0; left:0; right:0;
   height:100vh; pointer-events:none; z-index:50; overflow:hidden;
 }
-#ring-layer {
-  position:fixed; inset:0;
-  pointer-events:none; z-index:58; overflow:hidden;
-}
-.scroll-ring {
+.lantern {
   position:absolute;
-  width:140px; height:140px;
-  border-radius:50%;
-  background:
-    radial-gradient(circle at 32% 30%, rgba(255,255,255,0.92), transparent 16%),
-    radial-gradient(circle at 58% 40%, rgba(255,236,156,0.28), transparent 30%),
-    radial-gradient(circle at 50% 55%, rgba(205,150,55,0.95), rgba(205,150,55,0.55) 55%, rgba(124,78,18,0.4) 90%);
-  box-shadow:
-    0 18px 38px rgba(0,0,0,0.16),
-    inset 0 0 28px rgba(255,246,190,0.32),
-    inset 0 0 8px rgba(255,255,255,0.15);
-  border:2px solid rgba(255,255,255,0.24);
-  filter:drop-shadow(0 0 20px rgba(255,214,112,0.18));
-  opacity:0.96;
-  transform: translate(-50%,0) rotate(0deg);
-  will-change:transform,opacity,top,left,right;
-}
-.scroll-ring::before {
-  content:'';
-  position:absolute;
-  inset:20px;
-  border-radius:50%;
-  background: radial-gradient(circle at 40% 40%, rgba(255,255,255,0.24), rgba(255,255,255,0.02) 30%),
-              radial-gradient(circle at 50% 50%, rgba(0,0,0,0.1), transparent 65%);
-  box-shadow: inset 0 0 14px rgba(255,255,255,0.12);
-}
-.scroll-ring::after {
-  content:'';
-  position:absolute;
-  width:22px; height:22px;
-  top:20px; left:24px;
-  border-radius:50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.92), rgba(255,255,255,0.1) 55%);
-  filter: blur(0.7px);
-}
-.scroll-ring.ring-left { left:8%; top:18vh; }
-.scroll-ring.ring-right { right:8%; top:18vh; }
-@media(max-width:768px){
-  .scroll-ring { width:96px; height:96px; }
-  .scroll-ring::before { inset:14px; }
-  .scroll-ring::after { width:16px; height:16px; top:14px; left:18px; }
-  .scroll-ring.ring-left { left:10%; }
-  .scroll-ring.ring-right { right:10%; }
+  will-change:transform,opacity;
 }
 
 /* ══════════════════════════════════
@@ -617,10 +572,178 @@ footer {
 
 <div id="progress-bar"></div>
 <div id="lantern-layer"></div>
-<div id="ring-layer">
-  <div class="scroll-ring ring-left"></div>
-  <div class="scroll-ring ring-right"></div>
+
+<!-- Floating Rings -->
+<style>
+  .floating-ring {
+    position: fixed;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    z-index: 99;
+    filter: drop-shadow(0 10px 30px rgba(201, 168, 76, 0.3));
+    animation: float-rings 4s ease-in-out infinite;
+    transition: transform 0.1s ease-out, filter 0.3s ease;
+  }
+  
+  .floating-ring img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  
+  .ring-left {
+    left: 20px;
+    animation-name: float-left-ring;
+  }
+  
+  .ring-right {
+    right: 20px;
+    animation-name: float-right-ring;
+  }
+  
+  .floating-ring.joined {
+    filter: drop-shadow(0 20px 60px rgba(201, 168, 76, 0.6)) 
+            drop-shadow(0 0 40px rgba(232, 200, 112, 0.5));
+  }
+  
+  @keyframes float-left-ring {
+    0%, 100% { 
+      transform: translateY(0) rotate(-8deg);
+    }
+    50% { 
+      transform: translateY(-20px) rotate(-8deg);
+    }
+  }
+  
+  @keyframes float-right-ring {
+    0%, 100% { 
+      transform: translateY(0) rotate(8deg);
+    }
+    50% { 
+      transform: translateY(-20px) rotate(8deg);
+    }
+  }
+  
+  /* Ring join glow burst */
+  .ring-burst {
+    position: fixed;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232, 200, 112, 0.4), transparent 70%);
+    filter: blur(20px);
+    pointer-events: none;
+    z-index: 98;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .ring-burst.active {
+    opacity: 1;
+  }
+</style>
+
+<div class="floating-ring ring-left" id="ring-left">
+  <img src="/Ringimage.png" alt="Left ring" />
 </div>
+
+<div class="floating-ring ring-right" id="ring-right">
+  <img src="/Ringimage.png" alt="Right ring" />
+</div>
+
+<div class="ring-burst" id="ring-burst"></div>
+
+<script>
+  // Track scroll - rings get closer together, join, and hold until footer
+  function updateRingPosition() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    const scrollProgress = docHeight > 0 ? scrollTop / docHeight : 0;
+    
+    const ringLeft = document.getElementById('ring-left');
+    const ringRight = document.getElementById('ring-right');
+    const ringBurst = document.getElementById('ring-burst');
+    
+    if (!ringLeft || !ringRight) return;
+    
+    let topPosition, leftX, rightX, scale, leftRotate, rightRotate;
+    
+    // Phase 1 (0-0.80): Rings converge and move down
+    if (scrollProgress <= 0.80) {
+      // Calculate vertical position - rings move down as you scroll
+      const maxVerticalTravel = window.innerHeight * 0.6;
+      topPosition = 30 + (scrollProgress / 0.80 * maxVerticalTravel);
+      
+      // Calculate horizontal convergence - rings get closer together
+      const maxHorizontalDistance = (window.innerWidth - 280) / 2;
+      const convergenceAmount = (scrollProgress / 0.80) * maxHorizontalDistance;
+      
+      leftX = 20 + convergenceAmount;
+      rightX = 20 + convergenceAmount;
+      
+      // Scale and rotation during convergence
+      scale = 1 - (scrollProgress / 0.80 * 0.12);
+      leftRotate = -8 + (scrollProgress / 0.80 * 8);
+      rightRotate = 8 - (scrollProgress / 0.80 * 8);
+      
+      // Show glow effect as they get closer
+      if (scrollProgress > 0.6) {
+        ringLeft.classList.add('joined');
+        ringRight.classList.add('joined');
+        if (ringBurst) {
+          ringBurst.classList.add('active');
+          ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
+          ringBurst.style.top = topPosition + 'px';
+        }
+      } else {
+        ringLeft.classList.remove('joined');
+        ringRight.classList.remove('joined');
+        if (ringBurst) ringBurst.classList.remove('active');
+      }
+    }
+    // Phase 2 (0.80-1.0): Rings stay joined in center position
+    else {
+      const maxVerticalTravel = window.innerHeight * 0.6;
+      topPosition = 30 + maxVerticalTravel;
+      
+      // Center position - rings joined
+      const maxHorizontalDistance = (window.innerWidth - 280) / 2;
+      leftX = 20 + maxHorizontalDistance;
+      rightX = 20 + maxHorizontalDistance;
+      
+      scale = 0.88;
+      leftRotate = 0;
+      rightRotate = 0;
+      
+      // Keep glow active while joined
+      ringLeft.classList.add('joined');
+      ringRight.classList.add('joined');
+      if (ringBurst) {
+        ringBurst.classList.add('active');
+        ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
+        ringBurst.style.top = topPosition + 'px';
+      }
+    }
+    
+    // Update left ring
+    ringLeft.style.left = leftX + 'px';
+    ringLeft.style.top = topPosition + 'px';
+    ringLeft.style.transform = `scale(${scale}) rotate(${leftRotate}deg)`;
+    
+    // Update right ring
+    ringRight.style.right = rightX + 'px';
+    ringRight.style.top = topPosition + 'px';
+    ringRight.style.transform = `scale(${scale}) rotate(${rightRotate}deg)`;
+  }
+  
+  // Update on scroll with passive listener for performance
+  window.addEventListener('scroll', updateRingPosition, { passive: true });
+  window.addEventListener('resize', updateRingPosition);
+  
+  // Initial call
+  updateRingPosition();
+</script>
 
 <!-- ═══════════════════════════════
      HERO
@@ -971,35 +1094,36 @@ footer {
       "And of His signs is that He created for you from yourselves mates that you may find tranquillity in them"<br/>
       — Surah Ar-Rum, 30:21
     </p>
-
-    <p class="grandparents-text reveal d2">
+<h2 class="section-title-big reveal d3 on">Invitation</h2>
+    <!-- <p class="grandparents-text reveal d2">
       With the duas &amp; blessings of<br/>
       Haji Ahmad Al-Rashid &amp; Hajjah Khadijah Al-Rashid<br/>
       &amp;<br/>
       Sheikh Omar Al-Farooq &amp; Ustaza Maryam Al-Farooq
-    </p>
+    </p> -->
     <div class="thin-gold-rule reveal d3"></div>
-    <p class="parents-text reveal d3">
+    <!-- <p class="parents-text reveal d3">
       Mr. Ibrahim Al-Rashid &amp; Mrs. Aisha Al-Rashid<br/>
       <small style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.28em;color:var(--gold-lt);opacity:0.7;">
         together with
       </small><br/>
       Mr. Yusuf Al-Farooq &amp; Mrs. Zainab Al-Farooq
-    </p>
+    </p> -->
     <p class="invite-line reveal d4">
       joyfully request the honour of your presence<br/>
       at the blessed Nikah of their children
     </p>
     <div class="big-names reveal d4">
       Absar Sheik Mohideen<br/>
-      <span class="big-and">&amp;</span><br/>
+      <span class="big-and">&amp;</span>
       Jeneefa
     </div>
-    <p class="reveal d5" style="font-family:'Amiri',serif;font-size:1.1rem;opacity:0.55;margin-top:16px;color:var(--gold-lt);">
+    <p class="reveal d5" style="font-family:'Amiri',serif;font-size:1.7rem;opacity:0.75;margin-top:16px;color:var(--gold-lt);">
       بَارَكَ اللَّهُ لَكُمَا وَبَارَكَ عَلَيْكُمَا
     </p>
   </div>
 </section>
+
 
 
 <!-- ══ GEO DIVIDER 2 ══ -->
@@ -1026,7 +1150,7 @@ footer {
 
   <!-- Shared couple image from public folder -->
   <div class="couple-svg-wrap reveal d2" style="display:flex;justify-content:center;">
-    <img src="/BrideGroom.jpeg" alt="Bride and groom" style="max-width:100%;height:auto;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,0.18);" />
+    <img src="/BrideGroomImage.png" alt="Bride and groom" style="max-width:100%;height:auto;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,0.18);" />
   </div>
 
   <!-- Couple bios -->
@@ -1073,24 +1197,24 @@ footer {
     </p>
   </div>
 
-  <div class="events-grid">
-    <div class="event-card" data-delay="0">
+ <div class="events-grid">
+    <!--  <div class="event-card" data-delay="0">
       <span class="event-icon">🌙</span>
       <div class="event-name">Mehndi Night</div>
       <div class="event-date">Thursday, 9th July 2026</div>
       <div class="event-venue">SSM Mahal, Rameshwaram</div>
       <div class="event-time">7pm Onwards · Celebration</div>
       <a class="event-link" href="https://share.google/GmXzq9qTt46gh7mIc" target="_blank">Location →</a>
-    </div>
-    <div class="event-card" data-delay="100">
+    </div> -->
+    <!-- <div class="event-card" data-delay="100">
       <span class="event-icon">✨</span>
       <div class="event-name">Milad & Dua Evening</div>
       <div class="event-date">Friday, 10th July 2026</div>
       <div class="event-venue">SSM Mahal, Rameshwaram</div>
       <div class="event-time">8pm Onwards · After Maghrib</div>
       <a class="event-link" href="https://share.google/GmXzq9qTt46gh7mIc" target="_blank">Location →</a>
-    </div>
-    <div class="event-card" data-delay="200">
+    </div> -->
+    <div class="event-card" data-delay="00">
       <span class="event-icon">🕌</span>
       <div class="event-name">Nikah Ceremony</div>
       <div class="event-date">Sunday, 12th July 2026</div>
@@ -1098,15 +1222,15 @@ footer {
       <div class="event-time">11am · Nikah</div>
       <a class="event-link" href="https://share.google/GmXzq9qTt46gh7mIc" target="_blank">Location →</a>
     </div>
-    <div class="event-card" data-delay="0">
+    <div class="event-card" data-delay="200">
       <span class="event-icon">🌹</span>
       <div class="event-name">Walima Reception</div>
       <div class="event-date">Sunday, 19th July 2026</div>
       <div class="event-venue">Baithussalaam Mahal, Eruvadi</div>
-      <div class="event-time">7pm Onwards · Reception</div>
+      <div class="event-time">12:00pm Onwards · Reception</div>
       <a class="event-link" href="https://share.google/CHrJQT6miTJxVTuyl" target="_blank">Location →</a>
     </div>
-    <div class="event-card" data-delay="100">
+    <!-- <div class="event-card" data-delay="100">
       <span class="event-icon">🎊</span>
       <div class="event-name">Rukhsati</div>
       <div class="event-date">Monday, 20th July 2026</div>
@@ -1121,7 +1245,7 @@ footer {
       <div class="event-venue">SSM Mahal, Rameshwaram</div>
       <div class="event-time">6pm Onwards</div>
       <a class="event-link" href="https://share.google/GmXzq9qTt46gh7mIc" target="_blank">Location →</a>
-    </div>
+    </div> -->
   </div>
 </section>
 
@@ -1162,21 +1286,21 @@ footer {
     <div class="detail-card reveal">
       <span class="detail-icon">📸</span>
       <div class="detail-label">Hashtag</div>
-      <div class="detail-value">#AbsarSheikMohideenWedsJeneefa</div>
+      <div class="detail-value">AbsarSheik Weds Jeneefa</div>
       <div class="detail-sub">Share your blessed moments</div>
     </div>
-    <div class="detail-card reveal d1">
+    <!-- <div class="detail-card reveal d1">
       <span class="detail-icon">🌤️</span>
       <div class="detail-label">Weather</div>
       <div class="detail-value">~30°C · Warm</div>
       <div class="detail-sub">Warm July days in Rameshwaram</div>
-    </div>
-    <div class="detail-card reveal d2">
+    </div> -->
+    <!-- <div class="detail-card reveal d2">
       <span class="detail-icon">🏨</span>
       <div class="detail-label">Stay</div>
       <div class="detail-value">Hilton Bosphorus</div>
       <div class="detail-sub">Rooms reserved · 10 min from Masjid</div>
-    </div>
+    </div> -->
     <div class="detail-card reveal d3">
       <span class="detail-icon">👘</span>
       <div class="detail-label">Dress Code</div>
@@ -1185,9 +1309,9 @@ footer {
     </div>
     <div class="detail-card reveal d4">
       <span class="detail-icon">🚌</span>
-      <div class="detail-label">Transport</div>
-      <div class="detail-value">Coach Available</div>
-      <div class="detail-sub">From Hilton every 45 min</div>
+      <div class="detail-label">Parking</div>
+      <div class="detail-value">Valet Available</div>
+      <div class="detail-sub">Free parking for guests</div>
     </div>
     <div class="detail-card reveal d5">
       <span class="detail-icon">🤲</span>
@@ -1197,8 +1321,6 @@ footer {
     </div>
   </div>
 </section>
-
-
 <!-- ══════════════════════════════════
      COUNTDOWN
 ══════════════════════════════════ -->
@@ -1228,18 +1350,19 @@ footer {
      FOOTER
 ══════════════════════════════════ -->
 <footer>
-  <p style="font-family:'Amiri',serif;font-size:1.1rem;color:var(--gold);opacity:0.5;margin-bottom:8px;">
-    بِسْمِ ٱللَّٰهُ
+  <p style="font-family:'Amiri',serif;font-size:1.8rem;color:var(--gold);opacity:0.8;margin-bottom:8px;">
+    بِسْمِ ٱللَّٰهِ
   </p>
   <p class="footer-names">Absar Sheik Mohideen &amp; Jeneefa</p>
-  <p class="footer-date">12 · 07 · 2026 &nbsp;·&nbsp; Rameshwaram</p>
-  <div class="footer-links">
+  <p style="font-family:'Amiri',serif;font-size:0.8rem;color:var(--gold);opacity:0.8;margin-bottom:12px;" class="footer-date">12 · 07 · 2026 &nbsp;·&nbsp; Rameshwaram</p>
+  <!-- <div  class="footer-links">
     <a href="#" target="_blank">IG</a>
     <a href="https://wa.me/919876543210" target="_blank">WA</a>
     <a href="#" target="_blank">FB</a>
-  </div>
-  <p class="footer-copy">© 2026 Al-Rashid · Al-Farooq Nikah · Crafted with love &amp; duas 🌙</p>
+  </div> -->
+  <p style="font-family:'Amiri',serif;font-size:0.8rem;color:var(--gold);opacity:0.8;margin-bottom:8px;" class="footer-copy">© 2026 ABSAR · JANEEFA Nikah · Crafted with love &amp; duas 🌙</p>
 </footer>
+
 
 
 <script>
@@ -1260,7 +1383,6 @@ window.addEventListener('scroll', () => {
     heroText.style.opacity   = Math.max(0, 1 - sy / 440);
   }
   updateLanterns(sy);
-  updateRings(sy);
 }, { passive: true });
 
 /* ══════════════════════════════════
@@ -1361,38 +1483,6 @@ function updateLanterns(scrollY) {
   });
 }
 updateLanterns(0);
-updateRings(0);
-
-function updateRings(scrollY) {
-  const left = document.querySelector('.scroll-ring.ring-left');
-  const right = document.querySelector('.scroll-ring.ring-right');
-  const couple = document.getElementById('couple-scene');
-  if (!left || !right || !couple) return;
-
-  const minTop = window.innerHeight * 0.15;
-  const bob = Math.sin(scrollY * 0.008) * 6;
-  const floatTop = Math.min(minTop + scrollY * 0.18 + bob, window.innerHeight * 0.55);
-  const mergeStart = Math.max(0, couple.offsetTop - window.innerHeight * 0.6);
-  const mergeRange = window.innerHeight * 0.8;
-  const merge = scrollY > mergeStart ? Math.min(1, (scrollY - mergeStart) / mergeRange) : 0;
-
-  const leftX = 8 + (merge * 37) + Math.sin(scrollY * 0.006) * (1 - merge) * 5;
-  const rightX = 8 + (merge * 37) - Math.sin(scrollY * 0.006) * (1 - merge) * 5;
-  const targetTop = window.innerHeight * 0.38;
-  const top = merge ? targetTop + (floatTop - targetTop) * (1 - merge) : floatTop;
-  const rotation = scrollY * 0.035;
-  const scale = 1 - merge * 0.18;
-  const opacity = 0.96 - merge * 0.28;
-
-  left.style.left = `${leftX}%`;
-  right.style.right = `${rightX}%`;
-  left.style.top = `${top}px`;
-  right.style.top = `${top}px`;
-  left.style.transform = `translate(-50%,0) rotate(${rotation}deg) scale(${scale})`;
-  right.style.transform = `translate(50%,0) rotate(${-rotation}deg) scale(${scale})`;
-  left.style.opacity = opacity;
-  right.style.opacity = opacity;
-}
 
 /* ── COUNTDOWN ── */
 const NIKAH = new Date(2026, 6, 12, 11, 0, 0); // July 12
