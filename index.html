@@ -678,11 +678,14 @@ footer {
       const maxVerticalTravel = window.innerHeight * 0.6;
       topPosition = 30 + (scrollProgress / 0.80 * maxVerticalTravel);
       
-      // Calculate horizontal convergence - rings move towards center
-      const convergence = (scrollProgress / 0.80) * (window.innerWidth / 2 - 90);
+      // Calculate horizontal convergence - rings move towards center with tight overlap
+      const startLeft = 20;
+      const startRight = 20;
+      const endCenterLeft = (window.innerWidth / 2) - 55;  // Left ring final position
+      const endCenterRight = (window.innerWidth / 2) - 65;  // Right ring final position (overlaps with left)
       
-      leftPosition = 20 + convergence;
-      rightPosition = 20 + convergence;
+      leftPosition = startLeft + (scrollProgress / 0.80) * (endCenterLeft - startLeft);
+      rightPosition = startRight + (scrollProgress / 0.80) * (endCenterRight - startRight);
       
       // Scale and rotation during convergence
       scale = 1 - (scrollProgress / 0.80 * 0.12);
@@ -695,7 +698,7 @@ footer {
         ringRight.classList.add('joined');
         if (ringBurst) {
           ringBurst.classList.add('active');
-          ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
+          ringBurst.style.left = ((window.innerWidth / 2) - 140) + 'px';
           ringBurst.style.top = topPosition + 'px';
         }
       } else {
@@ -709,10 +712,9 @@ footer {
       const maxVerticalTravel = window.innerHeight * 0.6;
       topPosition = 30 + maxVerticalTravel;
       
-      // Center position - rings joined with tight overlap
-      const convergence = window.innerWidth / 2 - 90;
-      leftPosition = 20 + convergence;
-      rightPosition = 20 + convergence;
+      // Center position - rings tightly joined with overlap
+      leftPosition = (window.innerWidth / 2) - 55;
+      rightPosition = (window.innerWidth / 2) - 65;
       
       scale = 0.88;
       leftRotate = 0;
@@ -723,7 +725,7 @@ footer {
       ringRight.classList.add('joined');
       if (ringBurst) {
         ringBurst.classList.add('active');
-        ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
+        ringBurst.style.left = ((window.innerWidth / 2) - 140) + 'px';
         ringBurst.style.top = topPosition + 'px';
       }
     }
@@ -734,7 +736,8 @@ footer {
     ringLeft.style.transform = `scale(${scale}) rotate(${leftRotate}deg)`;
     
     // Update right ring
-    ringRight.style.right = rightPosition + 'px';
+    ringRight.style.right = 'auto';
+    ringRight.style.left = rightPosition + 'px';
     ringRight.style.top = topPosition + 'px';
     ringRight.style.transform = `scale(${scale}) rotate(${rightRotate}deg)`;
   }
