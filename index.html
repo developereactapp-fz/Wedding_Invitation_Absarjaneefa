@@ -672,33 +672,33 @@ footer {
     
     let topPosition, leftPosition, rightPosition, scale, leftRotate, rightRotate;
     
-    // Phase 1 (0-0.80): Rings converge and move down
-    if (scrollProgress <= 0.80) {
+    // Phase 1 (0-0.75): Rings get closer together as you scroll down
+    if (scrollProgress <= 0.75) {
       // Calculate vertical position - rings move down as you scroll
-      const maxVerticalTravel = window.innerHeight * 0.6;
-      topPosition = 30 + (scrollProgress / 0.80 * maxVerticalTravel);
+      const maxVerticalTravel = window.innerHeight * 0.5;
+      topPosition = 30 + (scrollProgress / 0.75 * maxVerticalTravel);
       
-      // Calculate horizontal convergence - rings move towards center with tight overlap
-      const startLeft = 20;
-      const startRight = 20;
-      const endCenterLeft = (window.innerWidth / 2) - 55;  // Left ring final position
-      const endCenterRight = (window.innerWidth / 2) - 65;  // Right ring final position (overlaps with left)
+      // Rings move towards center - converge from edges
+      // Left ring moves from 20px → center-70px
+      // Right ring moves from 20px → center-70px
+      const maxConvergence = (window.innerWidth / 2) - 70;
+      const convergence = (scrollProgress / 0.75) * maxConvergence;
       
-      leftPosition = startLeft + (scrollProgress / 0.80) * (endCenterLeft - startLeft);
-      rightPosition = startRight + (scrollProgress / 0.80) * (endCenterRight - startRight);
+      leftPosition = 20 + convergence;
+      rightPosition = 20 + convergence;
       
-      // Scale and rotation during convergence
-      scale = 1 - (scrollProgress / 0.80 * 0.12);
-      leftRotate = -8 + (scrollProgress / 0.80 * 8);
-      rightRotate = 8 - (scrollProgress / 0.80 * 8);
+      // Rotation during convergence
+      leftRotate = -8 + (scrollProgress / 0.75 * 8);
+      rightRotate = 8 - (scrollProgress / 0.75 * 8);
+      scale = 1;
       
-      // Show glow effect as they get closer
-      if (scrollProgress > 0.6) {
+      // Add glow as they get closer (after 50% progress)
+      if (scrollProgress > 0.5) {
         ringLeft.classList.add('joined');
         ringRight.classList.add('joined');
         if (ringBurst) {
           ringBurst.classList.add('active');
-          ringBurst.style.left = ((window.innerWidth / 2) - 140) + 'px';
+          ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
           ringBurst.style.top = topPosition + 'px';
         }
       } else {
@@ -707,25 +707,26 @@ footer {
         if (ringBurst) ringBurst.classList.remove('active');
       }
     }
-    // Phase 2 (0.80-1.0): Rings stay joined in center position
+    // Phase 2 (0.75-1.0): Rings stay perfectly joined before footer
     else {
-      const maxVerticalTravel = window.innerHeight * 0.6;
+      const maxVerticalTravel = window.innerHeight * 0.5;
       topPosition = 30 + maxVerticalTravel;
       
-      // Center position - rings tightly joined with overlap
-      leftPosition = (window.innerWidth / 2) - 55;
-      rightPosition = (window.innerWidth / 2) - 65;
+      // Perfectly joined in center
+      const maxConvergence = (window.innerWidth / 2) - 70;
+      leftPosition = 20 + maxConvergence;
+      rightPosition = 20 + maxConvergence;
       
-      scale = 0.88;
+      scale = 1;
       leftRotate = 0;
       rightRotate = 0;
       
-      // Keep glow active while joined
+      // Keep joined glow active
       ringLeft.classList.add('joined');
       ringRight.classList.add('joined');
       if (ringBurst) {
         ringBurst.classList.add('active');
-        ringBurst.style.left = ((window.innerWidth / 2) - 140) + 'px';
+        ringBurst.style.left = (window.innerWidth / 2 - 140) + 'px';
         ringBurst.style.top = topPosition + 'px';
       }
     }
@@ -736,8 +737,7 @@ footer {
     ringLeft.style.transform = `scale(${scale}) rotate(${leftRotate}deg)`;
     
     // Update right ring
-    ringRight.style.right = 'auto';
-    ringRight.style.left = rightPosition + 'px';
+    ringRight.style.right = rightPosition + 'px';
     ringRight.style.top = topPosition + 'px';
     ringRight.style.transform = `scale(${scale}) rotate(${rightRotate}deg)`;
   }
